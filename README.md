@@ -2,6 +2,8 @@
 
 A campus placement portal for students, recruiters, and placement officers, built with React, FastAPI, Azure SQL, Blob Storage, and Microsoft Foundry.
 
+**Live deployment:** [Open Campus Placement Assistant](https://campusplacement-cbd4c7asdgguhhb7.uaenorth-01.azurewebsites.net/)
+
 ## Features
 
 - Student signup, individual accounts, editable profiles and technical skills.
