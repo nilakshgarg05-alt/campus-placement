@@ -1,0 +1,11 @@
+fastapi==0.139.0
+uvicorn==0.50.0
+sqlalchemy
+pyodbc
+python-dotenv
+python-multipart
+pypdf
+azure-identity
+azure-ai-projects
+azure-storage-blob
+reportlab

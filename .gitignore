@@ -1,0 +1,28 @@
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.publishsettings
+# Dependencies and generated output
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+dist/
+build/
+*.egg-info/
+# Deployment archives, logs, and local test artifacts
+*.zip
+*.log
+backend/tmp*/
+frontend/ui-review/*.png
+frontend/ui-review/*.pdf
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
