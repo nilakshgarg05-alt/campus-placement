@@ -43,3 +43,5 @@ Reference: https://learn.microsoft.com/en-us/azure/app-service/configure-languag
 
 Live checks: invalid credentials now return HTTP 401 instead of HTTP 500.
 Database connection errors now have a safe HTTP 503 response with retry guidance.
+
+If the frontend was built in a separate clean directory, pass its `dist` path to `deploy/package.py`.

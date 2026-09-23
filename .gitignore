@@ -26,3 +26,6 @@ frontend/ui-review/*.pdf
 .idea/
 .DS_Store
 Thumbs.db
+
+# Temporary duplicate backend copy created for deployment
+/backend/deploy-clean/

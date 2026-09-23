@@ -1,9 +1,10 @@
 """Run from any directory after building frontend with VITE_API_BASE_URL=/api."""
 from pathlib import Path
 import zipfile
+import sys
 root = Path(__file__).resolve().parents[1]
 backend = root / "backend"
-dist = root / "frontend" / "dist"
+dist = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else root / "frontend" / "dist"
 if not (dist / "index.html").is_file():
     raise SystemExit("Build the frontend first.")
 output = Path(__file__).parent / "campusplacement.zip"
