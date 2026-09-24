@@ -216,7 +216,11 @@ shows gaps to address before applying. PDF downloads preserve the generated prev
 Local review: run the backend on `127.0.0.1:8000` and Vite on `127.0.0.1:5173` with
 `VITE_API_BASE_URL=http://127.0.0.1:8000`. No database schema migration is needed.
 Local review is complete. All 31 backend tests, frontend lint, and the production build
-passed. Azure deployment is pending successful Azure CLI authentication.
+passed. Deployed to Azure on 2026-09-24 (deployment
+`dc819676-ed97-421b-9316-7dc6bda6633e`). Live checks verified the new frontend,
+health, protected API routes, database-backed invalid-login response, and rejection
+of student signup outside the university domain. No test account was created;
+live AI generation was not repeated during deployment verification.
 The local backend uses the Azure database, storage and AI connections in its `.env`.
 
 For localhost database access, Azure SQL must allow the current public client IP.
