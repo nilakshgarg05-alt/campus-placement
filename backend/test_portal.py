@@ -56,7 +56,7 @@ class PortalTests(unittest.TestCase):
                 "CREATE TABLE Resumes (resume_id INTEGER PRIMARY KEY, student_id INTEGER, ai_analysis TEXT, resume_score REAL, filename TEXT, blob_path TEXT, resume_text TEXT)",
             ]:
                 conn.execute(text(ddl))
-            conn.execute(text("INSERT INTO Students VALUES (1, 'Alice', 'alice@example.test', 'CSE', 8, 0, ''), (2, 'Bob', 'bob@example.test', 'CSE', 7, 0, '')"))
+            conn.execute(text("INSERT INTO Students VALUES (1, 'Alice', 'alice@chitkara.edu.in', 'CSE', 8, 0, ''), (2, 'Bob', 'bob@chitkara.edu.in', 'CSE', 7, 0, '')"))
             conn.execute(text("INSERT INTO StudentSkills VALUES (1, 'Python'), (2, 'Java')"))
             conn.execute(text("INSERT INTO Companies (company_id, company_name) VALUES (1, 'Acme')"))
             conn.execute(text("INSERT INTO Jobs VALUES (1, 1, 'Engineer', 7, 0, 'CSE, IT', 'Build things')"))
@@ -64,7 +64,7 @@ class PortalTests(unittest.TestCase):
             conn.execute(text("INSERT INTO Interviews VALUES (10, 1), (20, 2)"))
             conn.execute(text("INSERT INTO Applications VALUES (1, 1, 1, 'Applied', '2026-09-22')"))
             for account_id, role, student_id in [("alice", "student", 1), ("bob", "student", 2), ("recruiter", "recruiter", None), ("tpo", "tpo", None)]:
-                conn.execute(auth.accounts.insert().values(account_id=account_id, email=f"{account_id}@example.test",
+                conn.execute(auth.accounts.insert().values(account_id=account_id, email=f"{account_id}@chitkara.edu.in",
                     password_hash=self.password_hash, role=role, student_id=student_id))
                 conn.execute(auth.sessions.insert().values(token_hash=auth.token_hash(account_id),
                     account_id=account_id, expires_at=auth.now() + timedelta(hours=1)))
@@ -101,8 +101,8 @@ class PortalTests(unittest.TestCase):
 
     def test_login_logout_expiry_and_invalid_password(self):
         self.assertEqual(self.client.get("/students/me").status_code, 401)
-        self.assertEqual(self.client.post("/auth/login", json={"email": "alice@example.test", "password": "wrong"}).status_code, 401)
-        result = self.client.post("/auth/login", json={"email": " ALICE@example.test ", "password": "a-long-test-password"})
+        self.assertEqual(self.client.post("/auth/login", json={"email": "alice@chitkara.edu.in", "password": "wrong"}).status_code, 401)
+        result = self.client.post("/auth/login", json={"email": " ALICE@chitkara.edu.in ", "password": "a-long-test-password"})
         self.assertEqual(result.status_code, 200, result.text)
         self.assertNotIn("password_hash", result.json()["account"])
         headers = {"Authorization": "Bearer " + result.json()["token"]}
@@ -115,9 +115,9 @@ class PortalTests(unittest.TestCase):
 
     def test_failed_passwords_lock_account_and_cannot_assign_role(self):
         for _ in range(5):
-            response = self.client.post("/auth/login", json={"email": "alice@example.test", "password": "bad"})
+            response = self.client.post("/auth/login", json={"email": "alice@chitkara.edu.in", "password": "bad"})
             self.assertEqual(response.status_code, 401)
-        self.assertEqual(self.client.post("/auth/login", json={"email": "alice@example.test", "password": "a-long-test-password", "role": "tpo"}).status_code, 401)
+        self.assertEqual(self.client.post("/auth/login", json={"email": "alice@chitkara.edu.in", "password": "a-long-test-password", "role": "tpo"}).status_code, 401)
 
     def test_student_cannot_read_or_modify_other_student_or_staff_resources(self):
         for path in ["/students", "/students/2/applications", "/eligibility/2/1", "/readiness/2/1", "/company-preparation/2/1", "/jobs/1/matches", "/jobs/1/eligible-students", "/jobs/1/applications", "/tpo/student-status", "/companies"]:
@@ -170,7 +170,7 @@ class PortalTests(unittest.TestCase):
         saved = self.client.get("/students/me", headers=self.alice).json()
         self.assertEqual(saved["name"], "Alice Updated")
         self.assertEqual(saved["skills"], ["Python", "React"])
-        self.assertEqual(saved["email"], "alice@example.test")
+        self.assertEqual(saved["email"], "alice@chitkara.edu.in")
         bob = self.client.get("/students/me", headers={"Authorization": "Bearer bob"}).json()
         self.assertEqual(bob["name"], "Bob")
         self.assertEqual(bob["skills"], ["Java"])
@@ -220,15 +220,33 @@ class PortalTests(unittest.TestCase):
             self.assertTrue(response.content.startswith(b"%PDF"))
 
     def signup_payload(self, **changes):
-        return {**self.profile(), "role": "student", "email": "new@example.test",
+        return {**self.profile(), "role": "student", "email": "new@chitkara.edu.in",
                 "password": "new-password-1234", "college": "Example Institute", "roll_number": "CS101",
                 "graduation_year": 2027, "achievements": "Won campus hackathon", "projects": "Built a React portal",
                 "certifications": "Cloud fundamentals", "github": "https://github.com/example", **changes}
 
+    def test_student_email_restriction_covers_signup_login_sessions_and_email_changes(self):
+        for email in ["outsider@gmail.com", "fake@chitkara.edu.in.evil.test", "fake@sub.chitkara.edu.in", "fake@chitkara.edu", "a@@chitkara.edu.in"]:
+            with self.subTest(email=email):
+                response=self.client.post("/auth/signup",json=self.signup_payload(email=email))
+                self.assertEqual(response.status_code,422,response.text)
+        response=self.client.post("/auth/signup",json=self.signup_payload(email=" New3354.BEAI24@CHITKARA.EDU.IN "))
+        self.assertEqual(response.status_code,201,response.text)
+        response=self.client.post("/auth/login",json={"email":"new3354.beai24@chitkara.edu.in","password":self.signup_payload()["password"]})
+        self.assertEqual(response.status_code,200,response.text)
+        response=self.client.put("/auth/email",headers=self.alice,json={"email":"outsider@gmail.com","password":"a-long-test-password"})
+        self.assertEqual(response.status_code,422)
+        with self.engine.begin() as conn:
+            conn.execute(auth.accounts.update().where(auth.accounts.c.account_id=="alice").values(email="old@gmail.com"))
+            conn.execute(auth.accounts.update().where(auth.accounts.c.account_id=="recruiter").values(email="hr@company.example"))
+        self.assertEqual(self.client.post("/auth/login",json={"email":"old@gmail.com","password":"a-long-test-password"}).status_code,403)
+        self.assertEqual(self.client.get("/auth/me",headers=self.alice).status_code,401)
+        self.assertEqual(self.client.post("/auth/login",json={"email":"hr@company.example","password":"a-long-test-password"}).status_code,200)
+
     def test_student_signup_creates_owned_profile_and_persists_extended_details(self):
         response = self.client.post("/auth/signup", json=self.signup_payload())
         self.assertEqual(response.status_code, 201, response.text)
-        response = self.client.post("/auth/login", json={"email": "new@example.test", "password": "new-password-1234"})
+        response = self.client.post("/auth/login", json={"email": "new@chitkara.edu.in", "password": "new-password-1234"})
         self.assertEqual(response.status_code, 200, response.text)
         student_id = response.json()["account"]["student_id"]
         headers = {"Authorization": "Bearer " + response.json()["token"]}
@@ -252,10 +270,10 @@ class PortalTests(unittest.TestCase):
                         {"student_id": 1}, {"github": "javascript:alert(1)"}, {"graduation_year": 5000}]:
             response = self.client.post("/auth/signup", json=self.signup_payload(**changes))
             self.assertEqual(response.status_code, 422, response.text)
-        self.assertEqual(self.client.post("/auth/signup", json=self.signup_payload(email=" ALICE@example.test ")).status_code, 409)
+        self.assertEqual(self.client.post("/auth/signup", json=self.signup_payload(email=" ALICE@chitkara.edu.in ")).status_code, 409)
         with self.engine.begin() as conn:
             conn.execute(auth.accounts.delete().where(auth.accounts.c.account_id == "bob"))
-        self.assertEqual(self.client.post("/auth/signup", json=self.signup_payload(email="bob@example.test")).status_code, 409)
+        self.assertEqual(self.client.post("/auth/signup", json=self.signup_payload(email="bob@chitkara.edu.in")).status_code, 409)
         self.assertEqual(self.client.post("/auth/signup", json=self.signup_payload(skills=["FAIL_TRANSACTION"])).status_code, 409)
         with self.engine.connect() as conn:
             self.assertEqual(conn.execute(text("SELECT COUNT(*) FROM Students")).scalar(), 2)
@@ -264,7 +282,7 @@ class PortalTests(unittest.TestCase):
 
     def test_staff_signup_requires_role_invitation_and_saves_professional_details(self):
         for role in ["recruiter", "tpo"]:
-            payload = {"role": role, "name": "New Staff", "email": f"new-{role}@example.test",
+            payload = {"role": role, "name": "New Staff", "email": f"new-{role}@chitkara.edu.in",
                 "password": "staff-password-1234", "phone": "9000000000", "organization": "New Organization",
                 "designation": "Coordinator", "department": "Placement", "website": "https://example.test",
                 "invitation_code": "incorrect"}
@@ -288,7 +306,7 @@ class PortalTests(unittest.TestCase):
         payload = {"job_title":"Developer","min_cgpa":7,"max_backlogs":0,
                    "eligible_branches":"CSE","job_description":"Build","skills":["React"]}
         with self.engine.begin() as conn:
-            conn.execute(text("INSERT INTO Companies (company_id, company_name, recruiter_email) VALUES (2, 'Other', 'other@example.test')"))
+            conn.execute(text("INSERT INTO Companies (company_id, company_name, recruiter_email) VALUES (2, 'Other', 'other@chitkara.edu.in')"))
         response = self.client.post("/recruiter/jobs", headers=self.recruiter, json={**payload,"company_id":2})
         self.assertEqual(response.status_code, 403, response.text)
         with self.engine.connect() as conn:
@@ -301,7 +319,7 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(self.client.put("/auth/profile", headers=self.recruiter, json=profile).status_code, 403)
         self.assertEqual(self.client.get("/auth/me", headers=self.recruiter).json()["profile"]["organization"], "Acme")
         # A login email correction must never acquire a different company's identity.
-        response = self.client.put("/auth/email", headers=self.recruiter, json={"email":"other@example.test","password":"a-long-test-password"})
+        response = self.client.put("/auth/email", headers=self.recruiter, json={"email":"other@chitkara.edu.in","password":"a-long-test-password"})
         self.assertEqual(response.status_code, 200)
         with self.engine.connect() as conn:
             details = json.loads(conn.execute(signup.staff_details.select().where(signup.staff_details.c.account_id == "recruiter")).mappings().one()["details"])
@@ -309,7 +327,7 @@ class PortalTests(unittest.TestCase):
 
     def test_administrator_provisioning_preserves_company_association(self):
         import manage_accounts
-        args = ["manage_accounts.py", "--role", "recruiter", "--email", "recruiter@example.test", "--reset-password", "--company-id"]
+        args = ["manage_accounts.py", "--role", "recruiter", "--email", "recruiter@chitkara.edu.in", "--reset-password", "--company-id"]
         with patch.object(manage_accounts, "engine", self.engine), patch("getpass.getpass", return_value="a-long-test-password"):
             with patch("sys.argv", args + ["2"]), self.assertRaises(SystemExit):
                 manage_accounts.main()
@@ -370,12 +388,12 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(self.client.put("/auth/profile", headers=self.recruiter, json={**payload,"role":"tpo"}).status_code, 422)
 
     def test_email_corrections_require_password_update_identity_and_revoke_sessions(self):
-        response = self.client.put("/auth/email", headers=self.alice, json={"email":"fixed@example.test","password":"wrong"})
+        response = self.client.put("/auth/email", headers=self.alice, json={"email":"fixed@chitkara.edu.in","password":"wrong"})
         self.assertEqual(response.status_code, 400)
-        response = self.client.put("/auth/email", headers=self.alice, json={"email":"bob@example.test","password":"a-long-test-password"})
+        response = self.client.put("/auth/email", headers=self.alice, json={"email":"bob@chitkara.edu.in","password":"a-long-test-password"})
         self.assertEqual(response.status_code, 409)
         for account_id in ("alice", "recruiter", "tpo"):
-            email = f"fixed-{account_id}@example.test"
+            email = f"fixed-{account_id}@chitkara.edu.in"
             response = self.client.put("/auth/email", headers={"Authorization":f"Bearer {account_id}"},
                 json={"email":email,"password":"a-long-test-password"})
             self.assertEqual(response.status_code, 200, response.text)
@@ -384,7 +402,7 @@ class PortalTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200, response.text)
             self.assertEqual(response.json()["account"]["email"], email)
         with self.engine.connect() as conn:
-            self.assertEqual(conn.execute(text("SELECT email FROM Students WHERE student_id=1")).scalar(), "fixed-alice@example.test")
+            self.assertEqual(conn.execute(text("SELECT email FROM Students WHERE student_id=1")).scalar(), "fixed-alice@chitkara.edu.in")
 
     def test_tpo_can_review_documents_and_resumes_but_other_roles_cannot(self):
         blobs = {}
@@ -434,7 +452,7 @@ class PortalTests(unittest.TestCase):
                 self.assertEqual(self.client.get("/tpo/documents",headers=headers).status_code,403)
             own=self.client.get("/documents?scope=student&student_id=1",headers=self.alice).json()["documents"]
             self.assertEqual(len(own),1)
-            self.assertEqual(own[0]["uploaded_by"],"alice@example.test")
+            self.assertEqual(own[0]["uploaded_by"],"alice@chitkara.edu.in")
 
     def test_campus_policy_versions_archiving_and_role_permissions(self):
         tpo={"Authorization":"Bearer tpo"}
@@ -519,12 +537,83 @@ class PortalTests(unittest.TestCase):
         from sqlalchemy.exc import InterfaceError, OperationalError
         for error in (InterfaceError, OperationalError):
             with patch.object(auth.engine, "begin", side_effect=error("secret SQL", {}, Exception("private connection details"))):
-                response = self.client.post("/auth/login", json={"email":"test@example.test", "password":"test-password"})
+                response = self.client.post("/auth/login", json={"email":"test@chitkara.edu.in", "password":"test-password"})
             self.assertEqual(response.status_code, 503)
             self.assertIn("database is temporarily unavailable", response.json()["detail"])
             self.assertNotIn("private", response.text)
             self.assertNotIn("secret", response.text)
             self.assertEqual(response.headers["Retry-After"], "30")
+
+    def test_local_database_firewall_error_has_actionable_response(self):
+        from sqlalchemy.exc import ProgrammingError
+        with patch.object(auth.engine,"begin",side_effect=ProgrammingError("",{},Exception("40615 private server details"))):
+            response=self.client.post("/auth/login",json={"email":"test@chitkara.edu.in","password":"test"})
+        self.assertEqual(response.status_code,503)
+        self.assertIn("current network",response.json()["detail"])
+        self.assertNotIn("private",response.text)
+
+    def test_resume_upload_returns_and_persists_own_job_recommendations(self):
+        from io import BytesIO
+        from reportlab.pdfgen import canvas
+        pdf=BytesIO();page=canvas.Canvas(pdf);page.drawString(72,700,"Python projects and web development");page.save()
+        with patch.object(main,"upload_blob"), patch.object(main,"call_foundry",return_value=SimpleNamespace(output_text="Resume Score: 75/100")):
+            response=self.client.post("/resume/analyze?student_id=1",headers=self.alice,files={"file":("cv.pdf",pdf.getvalue(),"application/pdf")})
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()["recommendations"][0]["matched_skills"],["Python"])
+        refreshed=self.client.get("/resume/recommendations",headers=self.alice).json()
+        self.assertEqual(refreshed["recommendations"],response.json()["recommendations"])
+        self.assertFalse(self.client.get("/resume/recommendations",headers={"Authorization":"Bearer bob"}).json()["has_resume"])
+
+    def test_resume_recommendations_use_uploaded_evidence_and_current_eligibility(self):
+        with self.engine.begin() as conn:
+            conn.execute(text("INSERT INTO Resumes (student_id,resume_text) VALUES (1,'Python project with JavaScript'), (2,'React')"))
+            conn.execute(text("INSERT INTO JobSkills VALUES (1,'Java')"))
+        result=self.client.get("/resume/recommendations",headers=self.alice)
+        self.assertEqual(result.status_code,200,result.text)
+        job=result.json()["recommendations"][0]
+        self.assertEqual(job["matched_skills"],["Python"])
+        self.assertIn("Java",job["missing_skills"])
+        self.client.put("/students/me",headers=self.alice,json=self.profile(cgpa=6,skills=["Python","React"]))
+        result=self.client.get("/resume/recommendations",headers=self.alice).json()
+        self.assertEqual(result["recommendations"],[])
+        job=result["other_jobs"][0]
+        self.assertFalse(job["eligible"])
+        self.assertEqual(job["saved_skills_missing_from_resume"],["React"])
+        self.assertEqual(self.client.get("/resume/recommendations?student_id=2",headers=self.alice).status_code,403)
+        self.assertEqual(self.client.get("/resume/recommendations",headers=self.recruiter).status_code,403)
+
+    def test_targeted_resume_includes_selected_published_job_policies(self):
+        with self.engine.begin() as conn:
+            doc=knowledge.save_document(conn,{"account_id":"recruiter"},"job","Interview rounds","Bring a portfolio of backend projects.")
+            knowledge.attach_job_documents(conn,[doc["document_id"]],1,"recruiter")
+            knowledge.save_document(conn,{"account_id":"recruiter"},"job","Unpublished draft","DRAFT MUST NOT APPEAR")
+            old=knowledge.save_document(conn,{"account_id":"recruiter"},"job","Old policy","ARCHIVED MUST NOT APPEAR")
+            knowledge.attach_job_documents(conn,[old["document_id"]],1,"recruiter")
+            conn.execute(knowledge.documents.update().where(knowledge.documents.c.document_id==old["document_id"]).values(active=False))
+        with patch.object(main,"call_foundry",return_value=SimpleNamespace(output_text="# Alice\nPython projects")) as ai:
+            response=self.client.post("/resume/generate",headers=self.alice,json={"student_id":1,"job_id":1})
+            self.assertEqual(response.status_code,200,response.text)
+            prompt=ai.call_args.args[0]
+            self.assertIn("Acme",prompt)
+            self.assertIn("Bring a portfolio",prompt)
+            self.assertNotIn("DRAFT MUST NOT APPEAR",prompt)
+            self.assertNotIn("ARCHIVED MUST NOT APPEAR",prompt)
+            self.assertIn("A job requirement",prompt)
+            self.assertEqual(response.json()["target_fit"]["missing_skills"],["React"])
+            ai.reset_mock()
+            response=self.client.post("/resume/generate",headers=self.alice,json={"student_id":1,"job_id":999})
+            self.assertEqual(response.status_code,404)
+            ai.assert_not_called()
+
+    def test_resume_pdf_exports_preview_without_second_ai_generation(self):
+        from io import BytesIO
+        from pypdf import PdfReader
+        with patch.object(main,"call_foundry") as ai:
+            response=self.client.post("/resume/generate-pdf",headers=self.alice,json={"student_id":1,"job_id":1,"resume_text":"# Alice\nUnique reviewed wording"})
+            self.assertEqual(response.status_code,200,response.text[:150])
+            ai.assert_not_called()
+            content="".join(page.extract_text() for page in PdfReader(BytesIO(response.content)).pages)
+            self.assertIn("Unique reviewed wording",content)
 
     def test_every_business_route_requires_authentication(self):
         # OpenAPI includes router endpoints even on FastAPI versions with lazy included routers.

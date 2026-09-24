@@ -37,6 +37,12 @@ class Credentials(BaseModel):
 
 
 class StudentSignup(ProfileUpdate, Credentials):
+    @field_validator("email")
+    @classmethod
+    def university_email(cls, value):
+        from campus_email import require_student_email
+        return require_student_email(value)
+
     phone: str = Field(min_length=1, max_length=20)
     role: Literal["student"]
     college: str = Field(min_length=1, max_length=200)

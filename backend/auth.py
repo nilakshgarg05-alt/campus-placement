@@ -10,6 +10,7 @@ from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, selec
 from starlette.concurrency import run_in_threadpool
 
 from database import engine
+from campus_email import is_student_email, MESSAGE
 
 metadata = MetaData()
 accounts = Table(
@@ -79,6 +80,8 @@ def login(data: Login):
                 locked_until=now() + timedelta(minutes=15) if failures >= 5 else None,
             ))
         if account and valid and not locked:
+            if account["role"] == "student" and not is_student_email(account["email"]):
+                raise HTTPException(403, MESSAGE + " Contact your placement team to correct your existing account.")
             conn.execute(accounts.update().where(accounts.c.account_id == account["account_id"]).values(
                 failed_attempts=0, locked_until=None))
             token = secrets.token_urlsafe(32)
@@ -100,6 +103,8 @@ def authenticate(request):
             )).mappings().first()
     if not account:
         raise HTTPException(401, "Your session has expired. Please sign in again")
+    if account["role"] == "student" and not is_student_email(account["email"]):
+        raise HTTPException(401, MESSAGE + " Contact your placement team to correct your existing account.")
     return dict(account)
 
 
@@ -143,7 +148,7 @@ STUDENT_ROUTES = {
     ("GET", "/company-preparation/{student_id}/{job_id}"),
     ("POST", "/applications"), ("POST", "/interview/start"),
     ("POST", "/interview/answer"), ("POST", "/interview/finish/{interview_id}"),
-    ("POST", "/resume/analyze"), ("POST", "/resume/generate"),
+    ("GET", "/resume/recommendations"), ("POST", "/resume/analyze"), ("POST", "/resume/generate"),
     ("POST", "/resume/generate-pdf"), ("POST", "/placement-assistant"),
 }
 STAFF_ROUTES = {

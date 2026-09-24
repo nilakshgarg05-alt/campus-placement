@@ -142,18 +142,20 @@ export async function analyzeResume(studentId, file) {
   });
 }
 
-export function generateResume(studentId) {
+export function getResumeRecommendations() { return request("/resume/recommendations"); }
+
+export function generateResume(studentId, jobId = null) {
   return request("/resume/generate", {
     method: "POST",
-    body: JSON.stringify({ student_id: studentId }),
+    body: JSON.stringify({ student_id: studentId, job_id: jobId ? Number(jobId) : null }),
   });
 }
 
-export async function downloadResumePdf(studentId) {
+export async function downloadResumePdf(studentId, jobId = null, resumeText = null) {
   const res = await fetch(`${BASE_URL}/resume/generate-pdf`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ student_id: studentId }),
+    body: JSON.stringify({ student_id: studentId, job_id: jobId ? Number(jobId) : null, resume_text: resumeText }),
   });
 
   if (!res.ok || !(res.headers.get("content-type") || "").includes("application/pdf")) {

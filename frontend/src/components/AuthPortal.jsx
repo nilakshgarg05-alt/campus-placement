@@ -24,6 +24,7 @@ export default function AuthPortal({ role, children }) {
   async function submit(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (role === "student" && !/^[a-z0-9]+(?:[._+-][a-z0-9]+)*@chitkara\.edu\.in$/i.test(String(form.get("email") || "").trim())) { setError("Use your @chitkara.edu.in university email to sign in."); return; }
     setBusy(true); setError("");
     try { setAccount(await login(form.get("email"), form.get("password"))); }
     catch (err) { setError(err.message); }
@@ -38,7 +39,7 @@ export default function AuthPortal({ role, children }) {
     <header className="landing-header"><Brand /><Link className="btn btn-ghost" to="/">Back to home</Link></header>
     <main className="login-layout">
       <section className="login-intro"><span className="eyebrow">YOUR CAREER. YOUR SPACE.</span><h1>Your next chapter<br />starts here.</h1><p>Sign in to your own workspace. Keep your profile current, build your skills, and connect with the right opportunities.</p></section>
-      <section className="section-panel login-card"><span className="eyebrow">WELCOME BACK</span><h2>{title} sign in</h2><p className="text-slate-400">Sign in with your registered email and password.</p>
+      <section className="section-panel login-card">{role === "student" && <p className="mb-4">Student access requires an @chitkara.edu.in email.</p>}<span className="eyebrow">WELCOME BACK</span><h2>{title} sign in</h2><p className="text-slate-400">Sign in with your registered email and password.</p>
         <form onSubmit={submit} className="space-y-4 mt-6">
           <div><label htmlFor="login-email">Email address</label><input id="login-email" name="email" type="email" autoComplete="username" className="input" maxLength={254} required /></div>
           <div><label htmlFor="login-password">Password</label><input id="login-password" name="password" type="password" autoComplete="current-password" className="input" maxLength={128} required /></div>

@@ -27,6 +27,7 @@ function SignupPortal({ role }) {
   function change(event) { setForm(current => ({ ...current, [event.target.name]: event.target.value })); }
   async function submit(event) {
     event.preventDefault(); setError("");
+    if (student && !/^[a-z0-9]+(?:[._+-][a-z0-9]+)*@chitkara\.edu\.in$/i.test((form.email || "").trim())) { setError("Use your @chitkara.edu.in university email to create a student account."); return; }
     if (form.password !== form.confirm_password) { setError("Passwords do not match."); return; }
     setBusy(true);
     const shared = { role, name: form.name, email: form.email, password: form.password, phone: form.phone };
@@ -41,7 +42,7 @@ function SignupPortal({ role }) {
   }
   const common = [
     {name: "name", label: "Full name", required: true, maxLength: 100, autoComplete: "name"},
-    {name: "email", label: student ? "Email address" : "Work email", type: "email", required: true, maxLength: 254, autoComplete: "email"},
+    {name: "email", label: student ? "University email (@chitkara.edu.in)" : "Work email", type: "email", required: true, maxLength: 254, autoComplete: "email"},
     {name: "phone", label: "Phone number", type: "tel", required: true, maxLength: 20, autoComplete: "tel"},
   ];
   const academics = [
@@ -60,7 +61,7 @@ function SignupPortal({ role }) {
   return <div className="login-page"><header className="landing-header"><Brand /><Link className="btn btn-ghost" to={`/${role}`}>Back to sign in</Link></header>
     <main className="signup-layout"><span className="eyebrow">JOIN YOUR CAMPUS COMMUNITY</span><h1>{title} signup</h1>
       {created ? <section className="section-panel" role="status"><h2>Your account is ready</h2><p className="my-4">Your details have been saved. Sign in to open your workspace.</p><Link className="btn btn-primary" to={`/${role}`}>Sign in</Link></section> : <>
-        <p className="text-slate-400 mb-6">{student ? "Build your profile so recruiters can discover your skills and achievements." : "Register your professional details using the invitation code supplied by your campus administrator."} Fields marked * are required.</p>
+        <p className="text-slate-400 mb-6">{student ? "Student registration requires your @chitkara.edu.in university email. Build your profile so recruiters can discover your skills and achievements." : "Register your professional details using the invitation code supplied by your campus administrator."} Fields marked * are required.</p>
         <nav className="signup-roles" aria-label="Signup role">{["student", "recruiter", "tpo"].map(item => <Link key={item} to={`/signup/${item}`} className="btn btn-ghost" aria-current={role === item ? "page" : undefined}>{item === "tpo" ? "TPO" : item[0].toUpperCase() + item.slice(1)}</Link>)}</nav>
         <form className="section-panel" onSubmit={submit}><fieldset disabled={busy} className="signup-grid">
           {[...common, ...(student ? [...academics, ...studentExtraFields] : staff),

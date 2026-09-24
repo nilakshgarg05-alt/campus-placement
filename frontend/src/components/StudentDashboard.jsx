@@ -1,3 +1,4 @@
+import ResumeMatches from "./ResumeMatches";
 import JobRequirements from "./JobRequirements";
 import StudentProfile from "./StudentProfile";
 import DashboardNavigation, { Icon } from "./DashboardNavigation";
@@ -14,6 +15,7 @@ import {
   startInterview,
   answerInterview,
   finishInterview,
+  getResumeRecommendations,
   analyzeResume,
   generateResume,
   downloadResumePdf,
@@ -35,6 +37,7 @@ function StudentDashboard() {
   const [profileError, setProfileError] = useState("");
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [resumeJob, setResumeJob] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
   const [toast, setToast] = useState(null);
 
@@ -104,8 +107,8 @@ function StudentDashboard() {
         {activeTab === "readiness" && <ReadinessTab student={student} />}
         {activeTab === "preparation" && <PreparationTab student={student} />}
         {activeTab === "interview" && <InterviewTab student={student} />}
-        {activeTab === "resume" && <ResumeTab student={student} />}
-        {activeTab === "builder" && <ResumeBuilderTab student={student} />}
+        {activeTab === "resume" && <ResumeTab student={student} onTailor={jobId => { setResumeJob(String(jobId)); setActiveTab("builder"); }} />}
+        {activeTab === "builder" && <ResumeBuilderTab student={student} initialJob={resumeJob} />}
         {activeTab === "assistant" && <PlacementAssistantTab student={student} />}
       </main>
     </div>
@@ -666,7 +669,12 @@ function InterviewTab({ student }) {
 /* ═══════════════════════════════════════════════════════
    TAB: Resume AI
    ═══════════════════════════════════════════════════════ */
-function ResumeTab({ student }) {
+function ResumeTab({ student, onTailor }) {
+  const [matches, setMatches] = useState(null);
+  const [matchError, setMatchError] = useState("");
+  useEffect(() => {
+    getResumeRecommendations().then(setMatches).catch(error => setMatchError(error.message));
+  }, []);
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -678,6 +686,7 @@ function ResumeTab({ student }) {
     try {
       const data = await analyzeResume(student.student_id, file);
       setResult(data);
+      setMatches(data); setMatchError("");
     } catch (err) {
       setResult({ error: err.message });
     } finally {
@@ -728,6 +737,8 @@ function ResumeTab({ student }) {
       {result && result.error && (
         <div className="section-panel mt-4 text-rose-400">{result.error}</div>
       )}
+      {matchError && <p role="alert" className="text-rose-400 mt-4">{matchError}</p>}
+      <ResumeMatches data={matches} onTailor={onTailor} />
     </div>
   );
 }
@@ -736,7 +747,12 @@ function ResumeTab({ student }) {
 /* ═══════════════════════════════════════════════════════
    TAB: Resume Builder
    ═══════════════════════════════════════════════════════ */
-function ResumeBuilderTab({ student }) {
+function ResumeBuilderTab({ student, initialJob }) {
+  const [jobId, setJobId] = useState(initialJob || "");
+  const [jobs, setJobs] = useState([]);
+  const [targetFit, setTargetFit] = useState(null);
+  const [jobsError, setJobsError] = useState("");
+  useEffect(() => { getJobs().then(setJobs).catch(err => setJobsError(err.message)); }, []);
   const [resume, setResume] = useState("");
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -744,10 +760,12 @@ function ResumeBuilderTab({ student }) {
 
   const handleGenerate = async () => {
     setLoading(true);
+    setResume(""); setTargetFit(null);
     setError("");
     try {
-      const data = await generateResume(student.student_id);
+      const data = await generateResume(student.student_id, jobId);
       setResume(data.resume || "");
+      setTargetFit(data.target_fit);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -759,11 +777,11 @@ function ResumeBuilderTab({ student }) {
     setDownloading(true);
     setError("");
     try {
-      const blob = await downloadResumePdf(student.student_id);
+      const blob = await downloadResumePdf(student.student_id, jobId, resume);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `student_${student.student_id}_resume.pdf`;
+      a.download = `student_${student.student_id}_${jobId ? "job_" + jobId : "general"}_resume.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -782,11 +800,19 @@ function ResumeBuilderTab({ student }) {
         <p className="text-slate-400 mb-4">
           Generate an ATS-friendly resume from the profile, skills, projects and certifications stored for this student.
         </p>
+        <label htmlFor="resume-target-job" className="block mb-2">Target company and job</label>
+        <select id="resume-target-job" className="select-input mb-4" value={jobId} disabled={loading || downloading} onChange={event => { setJobId(event.target.value); setResume(""); setTargetFit(null); }}>
+          <option value="">General resume</option>
+          {jobs.map(job => <option key={job.job_id} value={job.job_id}>{job.company_name} - {job.job_title}</option>)}
+        </select>
+        {jobsError && <p role="alert">{jobsError}</p>}
+        <p className="text-slate-400 mb-4">Tailoring uses this job's published requirements and your saved facts. Review the result before applying; selection is not guaranteed.</p>
+        {jobId && <JobRequirements jobId={Number(jobId)} />}
         <div className="flex gap-3 flex-wrap">
-          <button className="btn btn-primary" onClick={handleGenerate} disabled={loading}>
+          <button className="btn btn-primary" onClick={handleGenerate} disabled={loading || downloading}>
             {loading ? "Generating…" : "Generate Resume"}
           </button>
-          <button className="btn btn-ghost" onClick={handleDownload} disabled={downloading}>
+          <button className="btn btn-ghost" onClick={handleDownload} disabled={downloading || loading || !resume}>
             {downloading ? "Preparing PDF…" : "Download PDF"}
           </button>
         </div>
@@ -801,6 +827,10 @@ function ResumeBuilderTab({ student }) {
         </div>
       )}
 
+      {targetFit && <div className="section-panel"><h3 className="font-bold">Before you apply</h3>
+        <p>Required skills absent from your saved profile: {targetFit.missing_skills.join(", ") || "None"}. These should not be added as claims without evidence.</p>
+        {!!targetFit.eligibility_blockers.length && <p className="text-amber-400">{targetFit.eligibility_blockers.join("; ")}</p>}
+      </div>}
       {resume && (
         <div className="section-panel">
           <div className="flex justify-between items-center mb-4">

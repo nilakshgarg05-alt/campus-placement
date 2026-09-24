@@ -39,6 +39,9 @@ class EmailCorrection(Credentials):
 @router.put("/email")
 def correct_email(data: EmailCorrection, request: Request):
     account = request.state.account
+    from campus_email import is_student_email, MESSAGE
+    if account["role"] == "student" and not is_student_email(data.email):
+        raise HTTPException(422, MESSAGE)
     try:
         with engine.begin() as conn:
             current = conn.execute(select(accounts).where(accounts.c.account_id == account["account_id"])).mappings().one()

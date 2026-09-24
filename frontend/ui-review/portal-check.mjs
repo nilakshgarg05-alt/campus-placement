@@ -9,7 +9,7 @@ const requests = [];
 let policies = [];
 let policyCounter = 0;
 const staffProfiles = { recruiter: {company_id: 1, name: "Staff Member", organization: "Example Institute", designation: "Coordinator", phone: "12345"}, tpo: {name: "Staff Member", organization: "Example Institute", designation: "Coordinator", phone: "12345"} };
-let student = { student_id: 1, name: 'Alice Student', email: 'alice@example.test', branch: 'CSE', cgpa: 8, backlogs: 0, phone: '', skills: ['Python'] };
+let student = { student_id: 1, name: 'Alice Student', email: 'alice@chitkara.edu.in', branch: 'CSE', cgpa: 8, backlogs: 0, phone: '', skills: ['Python'] };
 const job = { job_id: 1, company_id: 1, company_name: 'Example Technologies', job_title: 'Engineer', min_cgpa: 7, max_backlogs: 0, eligible_branches: 'CSE, IT' };
 page.on('pageerror', error => errors.push(error.message));
 await page.setRequestInterception(true);
@@ -35,7 +35,7 @@ page.on('request', request => {
     if (body.role !== 'student' && body.invitation_code !== 'valid-invite') { status = 403; data = { detail: 'Invalid invitation code for this role' }; }
     else { status = 201; data = { message: 'Account created', role: body.role }; }
   } else if (!token || token === 'expired') { status = 401; data = { detail: 'Your session has expired. Please sign in again' }; }
-  else if (path === '/auth/me') data = { role, student_id: role === 'student' ? 1 : null, email: `${role}@example.test`, profile: staffProfiles[role] };
+  else if (path === '/auth/me') data = { role, student_id: role === 'student' ? 1 : null, email: `${role}@chitkara.edu.in`, profile: staffProfiles[role] };
   else if (path === '/knowledge/policies') {
     if (method === 'POST') { const policy = {...body, document_id: `policy-${++policyCounter}`, revision:1, active:true, updated_at:new Date().toISOString()}; policies.push(policy); data=policy; status=201; }
     else data={policies};
@@ -49,8 +49,8 @@ page.on('request', request => {
   else if (path === '/knowledge/jobs/1') data={documents:[{document_id:'requirements',title:'Selection requirements',content:'Aptitude and technical interview.',revision:1}]};
   else if (path === '/recruiter/jobs') data={job_id:25};
   else if (path === '/placement-assistant') data={answer:'Attendance must be 80 percent [S1].',grounded:true,evidence:[{citation:'S1',title:'Attendance policy',kind:'campus',revision:2,excerpt:'Attendance must be 80 percent.'}],job_matches:[{...job,eligibility:{eligible:true}}]};
-  else if (path === '/auth/profile') { staffProfiles[role] = {...staffProfiles[role], ...body}; data = {role, email: `${role}@example.test`, profile: staffProfiles[role]}; }
-  else if (path === '/tpo/documents') data = {documents: [{kind: 'document', document_id: 'demo', filename: 'student-notes.txt', scope: 'student', student_id: 1, owner_name: 'Alice Student', owner_email: 'alice@example.test'}, {kind: 'document', document_id: 'recruiter-demo', filename: 'job-brief.txt', scope: 'recruiter', owner_name: 'Recruiter', owner_email: 'recruiter@example.test'}]};
+  else if (path === '/auth/profile') { staffProfiles[role] = {...staffProfiles[role], ...body}; data = {role, email: `${role}@chitkara.edu.in`, profile: staffProfiles[role]}; }
+  else if (path === '/tpo/documents') data = {documents: [{kind: 'document', document_id: 'demo', filename: 'student-notes.txt', scope: 'student', student_id: 1, owner_name: 'Alice Student', owner_email: 'alice@chitkara.edu.in'}, {kind: 'document', document_id: 'recruiter-demo', filename: 'job-brief.txt', scope: 'recruiter', owner_name: 'Recruiter', owner_email: 'recruiter@chitkara.edu.in'}]};
   else if (path === '/tpo/documents/demo') data = {filename: 'student-notes.txt', text: 'Shared student notes'};
   else if (path === '/auth/logout') data = { message: 'Signed out' };
   else if (path === '/students/me') {
@@ -90,7 +90,7 @@ async function fill(selector, value) {
 async function login(role) {
   await page.goto(`http://localhost:5173/${role}`);
   await page.waitForSelector('#login-email');
-  await fill('#login-email', `${role}@example.test`);
+  await fill('#login-email', `${role}@chitkara.edu.in`);
   await fill('#login-password', 'correct-password');
   await page.click('button[type=submit]');
   await page.waitForSelector('.nav-item');
@@ -105,7 +105,7 @@ try {
     for (const role of ['student', 'recruiter', 'tpo']) {
       await page.goto(`http://localhost:5173/signup/${role}`);
       await page.waitForSelector('#signup-name');
-      const fields = { name: 'New Campus User', email: `new-${role}@example.test`, phone: '9000000000',
+      const fields = { name: 'New Campus User', email: `new-${role}@chitkara.edu.in`, phone: '9000000000',
         password: 'correct-password', confirm_password: 'correct-password' };
       if (role === 'student') Object.assign(fields, { branch: 'CSE', cgpa: '8.7', college: 'Example Institute',
         roll_number: 'CS2027', graduation_year: '2027', skills: 'Python, React', achievements: 'Hackathon winner',
@@ -146,7 +146,7 @@ try {
   await page.setViewport({ width: 1440, height: 1000 });
   await page.goto('http://localhost:5173/student');
   await page.waitForSelector('#login-email');
-  await fill('#login-email', 'student@example.test');
+  await fill('#login-email', 'student@chitkara.edu.in');
   await fill('#login-password', 'wrong-password');
   await page.click('button[type=submit]');
   await page.waitForSelector('[role=alert]');

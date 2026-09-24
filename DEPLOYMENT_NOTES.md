@@ -201,3 +201,37 @@ set `FOUNDRY_MODEL_DEPLOYMENT` to select it explicitly. The response JSON schema
 citation IDs to the retrieved sources. If generation is temporarily unavailable, the
 UI still displays retrieved passages and related jobs. Other AI tools retain the existing
 Foundry agent configuration.
+
+## Resume targeting
+
+Resume AI now compares the latest uploaded resume with current posted jobs. It shows
+required-skill keyword coverage, academic eligibility from the saved profile, missing
+skills, and saved skills that are absent from the uploaded resume. This is an explainable
+keyword check, not a prediction of selection or a semantic verification of experience.
+
+Resume Builder accepts an optional job ID and incorporates that job's current description
+and active requirement policies. It prioritizes truthful saved skills and projects, and
+shows gaps to address before applying. PDF downloads preserve the generated preview.
+
+Local review: run the backend on `127.0.0.1:8000` and Vite on `127.0.0.1:5173` with
+`VITE_API_BASE_URL=http://127.0.0.1:8000`. No database schema migration is needed.
+Local review is complete. All 31 backend tests, frontend lint, and the production build
+passed. Azure deployment is pending successful Azure CLI authentication.
+The local backend uses the Azure database, storage and AI connections in its `.env`.
+
+For localhost database access, Azure SQL must allow the current public client IP.
+VPN/proxy IP changes can require a firewall update; the API reports this as a 503
+with guidance instead of a generic server error.
+
+## Student university email policy
+
+Student signup, login, session access, and email corrections require the exact
+`chitkara.edu.in` domain. Mixed case is normalized; lookalike domains and subdomains
+are rejected. Existing student accounts using other domains cannot log in or keep
+using old sessions. A placement administrator must verify and correct their email
+before access is restored. Student provisioning through `manage_accounts.py` also
+enforces this policy. Recruiters keep company email addresses and staff invitations.
+
+This is a domain restriction, not mailbox verification. An outsider could still type
+an unowned university email. Mailbox OTP verification or university-managed sign-in
+is required to prove ownership; neither is configured by this local change.

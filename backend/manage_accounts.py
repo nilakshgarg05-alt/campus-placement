@@ -48,6 +48,10 @@ def main():
         if not email or "@" not in email:
             parser.error("A valid existing student email or staff email is required")
         email = email.strip().lower()
+        if args.role == "student":
+            from campus_email import is_student_email, MESSAGE
+            if not is_student_email(email):
+                parser.error(MESSAGE)
         existing = conn.execute(select(accounts).where(accounts.c.email == email)).mappings().first()
         company = None
         details = {}
