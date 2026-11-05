@@ -124,14 +124,25 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import InterfaceError, OperationalError, ProgrammingError
 import logging
 
+
 @app.exception_handler(InterfaceError)
 @app.exception_handler(OperationalError)
 async def database_unavailable(request: Request, exc):
-    logging.getLogger(__name__).error("Database connection unavailable: %s", type(exc).__name__)
-    return JSONResponse(status_code=503, content={
-        "detail": "The placement database is temporarily unavailable. Please try again shortly. If this continues, contact your placement administrator."
-    }, headers={"Retry-After": "30", "Cache-Control": "no-store"})
+    logging.getLogger(__name__).error(
+        "Database connection unavailable",
+        exc_info=(type(exc), exc, exc.__traceback__)
+    )
 
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "The placement database is temporarily unavailable. Please try again shortly."
+        },
+        headers={
+            "Retry-After": "30",
+            "Cache-Control": "no-store"
+        }
+    )
 
 @app.exception_handler(ProgrammingError)
 async def database_network_configuration_error(request: Request, exc):
@@ -1443,11 +1454,12 @@ def calculate_readiness(student_id: int, job_id: int):
         backlog_score = 0
 
     # Overall readiness
+# Overall readiness
     readiness_score = (
-        skill_match * 0.70 +
-        cgpa_score +
-        backlog_score
-    )
+    float(skill_match) * 0.70 +
+    float(cgpa_score) +
+    float(backlog_score)
+)
 
     readiness_score = round(
         min(readiness_score, 100),
