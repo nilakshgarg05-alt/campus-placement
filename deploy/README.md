@@ -5,7 +5,7 @@ Website: https://campusplacement-cbd4c7asdgguhhb7.uaenorth-01.azurewebsites.net
 This package serves React at `/` and the FastAPI application at `/api`.
 The existing Foundry model stays in Foundry; App Service hosts the website and backend.
 
-From `campusplacement-fixed` in PowerShell:
+From the repository root in PowerShell:
 
 ```powershell
 Set-Location frontend
@@ -19,7 +19,7 @@ az webapp deploy -g Campus-Placement-Assistant -n CampusPlacement --src-path dep
 Azure application settings must include `SCM_DO_BUILD_DURING_DEPLOYMENT=true`,
 `DB_SERVER`, `DB_NAME`, `AZURE_STORAGE_ACCOUNT`, `FOUNDRY_PROJECT_ENDPOINT`,
 `FOUNDRY_AGENT_NAME`, and the private `RECRUITER_SIGNUP_CODE` and `TPO_SIGNUP_CODE`.
-Never include `.env` or credentials in the ZIP. Set the startup command to:
+The package script flattens the backend modules into the application root and copies the built website to `static/`. Never include `.env` or credentials in the ZIP. Use this startup command for this package:
 
 ```text
 python -m uvicorn web:app --host 0.0.0.0 --port 8000
@@ -44,4 +44,4 @@ Reference: https://learn.microsoft.com/en-us/azure/app-service/configure-languag
 Live checks: invalid credentials now return HTTP 401 instead of HTTP 500.
 Database connection errors now have a safe HTTP 503 response with retry guidance.
 
-If the frontend was built in a separate clean directory, pass its `dist` path to `deploy/package.py`.
+If the frontend was built in a separate clean directory, pass its `dist` path to `deploy/package.py`. GitHub Actions uses the same package script and startup command.
