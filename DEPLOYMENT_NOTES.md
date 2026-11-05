@@ -75,30 +75,22 @@ validation, and fresh matching/application/AI context. SQL Server string
 concatenation is translated for the fixtures; validate deployment against Azure SQL
 and Foundry in your staging environment as well.
 
-## Backend (Azure App Service / Linux)
+## Azure App Service deployment
 
-Set these application settings:
-- `DB_SERVER`
-- `DB_NAME`
-- `AZURE_STORAGE_ACCOUNT`
-- `DOCUMENTS_CONTAINER` (optional; defaults to `placement-documents`)
-- `FOUNDRY_PROJECT_ENDPOINT`
-- `FOUNDRY_AGENT_NAME` (usually `campusplacement`)
-- `CORS_ORIGINS` (comma-separated frontend origins)
+The production package serves the React website at `/` and the FastAPI application under
+`/api`. Build the frontend with `VITE_API_BASE_URL=/api` and package it with
+`python deploy/package.py`, or use the GitHub Actions deployment workflow. The package
+places backend modules and `requirements.txt` at the application root, with the website in
+`static/`.
 
-Use this startup command:
+Set the App Service startup command to:
 
-`uvicorn main:app --host 0.0.0.0 --port 8000`
+`python -m uvicorn web:app --host 0.0.0.0 --port 8000`
 
-The backend exposes:
-- `/health` — process health check
-- `/health/db` — database connectivity check
-- `/documents/upload` and `/documents` — placement document library
-- `/document-assistant/query` — answers grounded in selected uploaded documents
-
-The document assistant accepts text-based PDF, DOCX, TXT, MD, CSV, and JSON files up to 10 MB. It stores the original upload, extracted text, and metadata in the configured Blob Storage container. Grant the App Service managed identity Blob Data Contributor access to that account.
-
-The Foundry client is initialized lazily, so a temporary Azure identity/configuration issue does not prevent the FastAPI process from starting.
+Do not use an absolute `/home/site/wwwroot/backend` path. App Service can expand the
+deployment under a temporary application directory, and the standard package has no
+`backend/` subdirectory. The API process health endpoint is `/health`; database and AI
+functionality require their respective managed identity permissions.
 
 ## Frontend
 
