@@ -68,4 +68,3 @@ jobs:
           app-name: CampusPlacement
           slot-name: Production
           package: .
-```
