@@ -22,12 +22,20 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Verify project structure
+        run: |
+          echo "Checking backend files..."
+          ls -la backend
+          test -f backend/web.py
+          test -f backend/main.py
+          test -f backend/requirements.txt
+
       - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r backend/requirements.txt
 
-      - name: Prepare Azure deployment package
+      - name: Prepare Azure requirements
         run: |
           cp backend/requirements.txt requirements.txt
 
@@ -36,10 +44,13 @@ jobs:
         with:
           name: python-app
           path: |
-            .
-            !antenv/
-            !.git/
-            !.github/
+            backend/
+            frontend/
+            deploy/
+            requirements.txt
+            README.md
+            DEPLOYMENT_NOTES.md
+          include-hidden-files: true
 
   deploy:
     runs-on: ubuntu-latest
@@ -54,6 +65,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-app
+          path: .
+
+      - name: Verify deployment package
+        run: |
+          ls -la
+          test -f backend/web.py
+          test -f backend/main.py
 
       - name: Login to Azure
         uses: azure/login@v2
